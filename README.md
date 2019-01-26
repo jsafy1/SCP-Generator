@@ -12,12 +12,13 @@ The model in this repo has been trained for 6 hours on an Nvidia 970M, a.k.a. no
 This program accepts command line arguments. Type "python lstm.py -h" for a list of arguments and description of each. You can train a new model, continue training an existing model, or test a model to see what it outputs. 
 
 Some example output:
-NOTE: All input and output should be lowercase.
+
+NOTE: All input and output should be lowercase. This lowers the burden on the model, since it reduces the classification problem by 26 outcomes. 
 
 >the subject will attempt to speak and exhibit any recording of the containment cell in scp-1009 to scp 1112. scp-1020 is a static security clearance of the previous personnel on ██/██/19██ and the subject is able to appear to have shown the windows of a supervisor of the first thing and extend the subject in the subject's environment. 
 
 This example is interesting because it shows that the model learned how to censor appropriately. The date censoring makes sense syntactically, as well as within the timeline of the SCP Foundation.
 
-> It has been used in a safety test for the new model ███████ in the restraint of the subject and each of the specimens were then passed onto the containment chamber by dr. █████████████
+> it has been used in a safety test for the new model ███████ in the restraint of the subject and each of the specimens were then passed onto the containment chamber by dr. █████████████
 
 This example also demonstrates an understanding of censorship. The model is able to censor both the doctor's name, which is common in the training data, but also "model ███████," which is interesting since the LSTM had to understand that it might make sense to censor something like a model number or specification. 
