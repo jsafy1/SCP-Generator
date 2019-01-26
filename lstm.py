@@ -14,9 +14,9 @@ arguments through the -h flag without getting an error if
 they don't have a Keras backend installed.
 """
 parser = argparse.ArgumentParser()
-parser.add_argument("-output", dest="output", help="Location and name of output model", default="./model.h5")
+parser.add_argument("-data_dir", dest="data_dir", help="Location of training data. This is the only required argument", required=True)
 parser.add_argument("-input", dest="input", help="Location of model you wish to continue training or test")
-parser.add_argument("-data_dir", dest="data_dir", help="Location of training data", required=True)
+parser.add_argument("-output", dest="output", help="Location and name of output model", default="./model.h5")
 parser.add_argument("-epochs", dest="epochs", help="Number of training epochs", default=20, type=int)
 parser.add_argument("-batch_size", dest="batch_size", help="Batch size", default=512, type=int)
 parser.add_argument("-nodes", dest="nodes", help="Number of nodes per layer", default=256, type=int)
