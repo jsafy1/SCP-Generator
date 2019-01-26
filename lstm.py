@@ -1,6 +1,34 @@
+"""
+This module generates variable size LSTMs and allows users to train models
+from scratch, test models, or continue training existing models. It will
+try to train on GPU by default but switch to CPU if a GPU is not found.
+"""
+
 import random
 import sys
 import argparse
+
+"""
+These are here so that users can access the command line
+arguments through the -h flag without getting an error if
+they don't have a Keras backend installed.
+"""
+parser = argparse.ArgumentParser()
+parser.add_argument("-output", dest="output", help="Location and name of output model", default="./model.h5")
+parser.add_argument("-input", dest="input", help="Location of model you wish to continue training or test")
+parser.add_argument("-data_dir", dest="data_dir", help="Location of training data", required=True)
+parser.add_argument("-epochs", dest="epochs", help="Number of training epochs", default=20, type=int)
+parser.add_argument("-batch_size", dest="batch_size", help="Batch size", default=512, type=int)
+parser.add_argument("-nodes", dest="nodes", help="Number of nodes per layer", default=256, type=int)
+parser.add_argument("-layers", dest="layers", help="Number of layers", default=2, type=int)
+parser.add_argument("-step", dest="step", help="Number of steps to overlap", default=3, type=int)
+parser.add_argument("-maxlen", dest="maxlen", help="How long each training sequence should be", default=50, type=int)
+parser.add_argument("-test", dest="test", help="Do you want to test a model or train?", default=False)
+parser.add_argument("-length", dest="length", help="How long you want test article to be", default=1000, type=int)
+parser.add_argument("-start", dest="start", help="Where in the training data you want test article to start", default=0, type=int)
+
+args = vars(parser.parse_args())
+
 import numpy as np
 
 from keras.callbacks import ModelCheckpoint
@@ -14,26 +42,27 @@ except ModuleNotFoundError:
     from keras.layers import LSTM
     GPU = False
 
-parser = argparse.ArgumentParser()
-parser.add_argument("-output", dest="output", help="Location and name of output model", default="./model.h5")
-parser.add_argument("-input", dest="input", help="Location of model you wish to continue training or test")
-parser.add_argument("-data_dir", dest="data_dir", help="Location of training data", required=True)
-parser.add_argument("-epochs", dest="epochs", help="Number of training epochs", default=20, type=int)
-parser.add_argument("-batch_size", dest="batch_size", help="Batch size", default=512, type=int)
-parser.add_argument("-nodes", dest="nodes", help="Number of nodes per layer", default=256, type=int)
-parser.add_argument("-layers", dest="layers", help="Number of layers", default=2, type=int)
-parser.add_argument("-step", dest="step", help="Number of steps to overlap", default=3, type=int)
-parser.add_argument("-maxlen", dest="maxlen", help="How long each training sequence should be", default=50, type=int)
-parser.add_argument("-test", dest="test", help="Do you want to test a model or train?", default=False)
 
-args = vars(parser.parse_args())
+def load_text():
+    """
+    Load a .txt file and parse it.
 
+    Parameters
+    ----------
+    None
 
-def load_text(filepath):
-    with open(filepath, encoding="utf8") as _input:
+    Returns
+    -------
+    text (str): Body of text to train on.
+    chars (list): A list of all unique chars in the text
+    chars_indices (dict): A dictionary mapping each char to a number
+    indices_char (dict): A dictionary mapping each number to a char
+    """
+
+    with open(args["data_dir"], encoding="utf8") as _input:
         text = _input.read()
 
-    text = text[: len(text) // 5]  # Lower memory requirements.
+    text = text[: len(text) // 5]  # Divide to lower memory requirements.
     print("Length of text", len(text))
     chars = sorted(list(set(text)))
     print("Total unique chars:", len(chars))
@@ -45,10 +74,32 @@ def load_text(filepath):
     return text, chars, char_indices, indices_char
 
 
-def process_text(text, chars, char_indices, maxlen, step):
-    # Generate overlapping sequences of length maxlen. 
+def process_text(text, chars, char_indices):
+    """
+    Generate the X and y for the model.
+
+    Parameters
+    ----------
+    text (str): Body of text to train on.
+    chars (list): A list of all unique chars in the text
+    chars_indices (dict): A dictionary mapping each char to a number
+
+    Returns
+    -------
+    X (numpy.ndarray):
+        The training data. It is a tensor with 1s
+        representing the presence of a char in
+        that training sequence.
+    y (numpy.ndarray)
+        The correct answer. It is the next char after
+        each training sequence.
+    """
+
+    # Generate overlapping sequences of length maxlen.
     sentences = []
     next_chars = []
+    maxlen = args["maxlen"]
+    step = args["step"]
 
     for i in range(0, len(text) - maxlen, step):
         sentences.append(text[i: i + maxlen])
@@ -68,8 +119,40 @@ def process_text(text, chars, char_indices, maxlen, step):
     return x, y
 
 
-def run_model(x, y, chars, model_path, layers, nodes, batch_size, epochs, maxlen, GPU=GPU):
-    checkpoint = ModelCheckpoint(args["output"], monitor="loss", verbose=1, save_best_only=True, mode="min")
+def run_model(x, y, chars, GPU=GPU):
+    """
+    Run and save the model.
+
+    Parameters
+    ----------
+    X (numpy.ndarray):
+        The training data. It is a tensor with 1s
+        representing the presence of a char in
+        that training sequence.
+    y (numpy.ndarray):
+        The correct answer. It is the next char after
+        each training sequence.
+    GPU (bool): Whether a GPU is present.
+
+    Returns
+    -------
+    model (keras.Sequential): A fully trained model.
+    """
+
+    model_path = args["input"]
+    layers = args["layers"]
+    nodes = args["nodes"]
+    batch_size = args["batch_size"]
+    epochs = args["epochs"]
+    maxlen = args["maxlen"]
+
+    checkpoint = ModelCheckpoint(
+        args["output"],
+        monitor="loss",
+        verbose=1,
+        save_best_only=True,
+        mode="min")
+
     if model_path is None:
         print("Building model")
         model = Sequential()
@@ -117,7 +200,19 @@ def run_model(x, y, chars, model_path, layers, nodes, batch_size, epochs, maxlen
 
 
 def sample(preds, temperature=1.0):
-    # Helper function to sample an index from a probability array
+    """
+    Helper function to sample an index from a probability array
+
+    Parameters
+    ----------
+    preds (np.ndarray): Tensor of predicted values.
+    temperature (int): How diverse we want the output.
+
+    Returns
+    -------
+    np.argmax(probas) (int): Int of predicted value for char.
+    """
+
     preds = np.asarray(preds).astype("float64")
     preds = np.log(preds) / temperature
     exp_preds = np.exp(preds)
@@ -126,8 +221,27 @@ def sample(preds, temperature=1.0):
     return np.argmax(probas)
 
 
-def write_text(model_path, text, chars, indices_char, maxlen, length=1000, start_index=0):
-    model = load_model(model_path)
+def write_text(text, chars, char_indices, indices_char):
+    """
+    Test a model by writing an article.
+
+    Parameters
+    ----------
+    text (str): Body of text to train on.
+    chars (list): A list of all unique chars in the text
+    chars_indices (dict): A dictionary mapping each char to a number
+    indices_char (dict): A dictionary mapping each number to a char
+
+    Returns
+    -------
+    None
+    """
+
+    model = load_model(args["input"])
+    maxlen = args["maxlen"]
+    length = args["length"]
+    start_index = args["start"]
+
     for diversity in [0.5, .75, 1.0]:
         print("----- Diversity:", diversity)
         generated = ""
@@ -154,9 +268,9 @@ def write_text(model_path, text, chars, indices_char, maxlen, length=1000, start
 
 
 if __name__ == "__main__":
-    text, chars, char_indices, indices_char = load_text(args["data_dir"])
+    text, chars, char_indices, indices_char = load_text()
     if args["test"]:
-        write_text(args["input"], text, chars, indices_char, args["maxlen"])
+        write_text(args[text, chars, char_indices, indices_char])
     else:
-        x, y = process_text(text, chars, char_indices, args["maxlen"], args["step"])
-        run_model(x, y, chars, args["input"], args["layers"], args["nodes"], args["batch_size"], args["epochs"], args["maxlen"])
+        x, y = process_text(text, chars, char_indices)
+        run_model(x, y, chars)

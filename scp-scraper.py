@@ -1,3 +1,8 @@
+"""
+This script scrapes the SCP website to gather training data and saves
+it as a text file.
+"""
+
 import requests
 import csv
 import re
@@ -8,17 +13,19 @@ from bs4 import BeautifulSoup as bs
 url = "http://www.scp-wiki.wikidot.com/scp-"
 pages = []
 ascii = set(string.printable) 
-ascii.add("█")  
+ascii.add("█")  # This character is important for this dataset.
 
 
-def remove_non_ascii(s):  # This function will help us reduce the number of characters the model needs to learn.
+def remove_non_ascii(s):
+    """ Remove non-ascii characters """
     return filter(lambda x: x in ascii, s)
 
 
 for scp in range(2, 5000):
     print(scp) if scp % 100 == 0 else 0
     if scp < 100:
-        scp = "0" * (3 - len(str(scp))) + str(scp)  # SCPs are left-padded e.g. 001, 099, etc. until 100
+        # SCPs are left-padded e.g. 001, 099, etc. until 100
+        scp = "0" * (3 - len(str(scp))) + str(scp)
     else:
         scp = str(scp)
 
@@ -26,8 +33,10 @@ for scp in range(2, 5000):
     soup = bs(response.text, "html.parser")
     try:
         text = ""
-        for p in soup.find_all('p')[8: -1]:  # Splice out generic elems to get body text only. 
-            text += p.text.replace("\n", " ").lower() + " "  # We use lower to reduce chars needed to learn. 
+        # Splice out generic elems to get body text only.
+        for p in soup.find_all('p')[8: -1]:
+            # We use lower() to reduce chars needed to learn.
+            text += p.text.replace("\n", " ").lower() + " "
         text = text[text.find("item #:"):]
         if text:
             text_filter = remove_non_ascii(text)
@@ -41,12 +50,12 @@ for scp in range(2, 5000):
 
 print(len(pages))
 
-with open("scp.txt", "w", encoding="utf8") as output:
+with open("./scp.txt", "w", encoding="utf8") as output:
     for page in pages:
         output.write(page + "\n\n")
 
 # Output to CSV if needed
-# with open("scp.csv", "w", encoding="utf8") as output:
+# with open("./scp.csv", "w", encoding="utf8") as output:
 #     fieldnames = ["SCP Number", "Text"]
 #     writecsv = csv.DictWriter(output, fieldnames=fieldnames, lineterminator="\n")
 #     writecsv.writeheader()
