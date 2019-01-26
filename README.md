@@ -1,10 +1,10 @@
 ﻿# SCP-Generator
 
-This program uses a Long Short Term Memory network to generate text in the style of [SCP Foundation articles] (http://scp-wiki.wikidot.com/). 
+This program uses a Long Short Term Memory network to generate text in the style of [SCP Foundation articles](http://scp-wiki.wikidot.com/). 
 
 For the uninitiated, the SCP Foundation is a fictional organization which protects the world from supernatural threats. The reason I chose this to recreate is because:
 1. Most articles are highly structured. There is an item number, object class (how dangerous it is), containment procedures, including things like dimensions of containment facilities, and a description. I wanted to see if the LSTM could replicate this format.
-2. Some articles have redacted / censored parts. Articles handle these in two ways, either by using black bars, e.g. "Mr. ██████ ..." or by putting a [DATA EXPUNGED] message. These pose a challenge to the LSTM, similar to how [Google BERT] (github.com/google-research/bert) used masked input in order to train their model. I wanted to see if the network would learn how to censor effectively or if it would try to fill in the censored parts.
+2. Some articles have redacted / censored parts. Articles handle these in two ways, either by using black bars, e.g. "Mr. ██████ ..." or by putting a [DATA EXPUNGED] message. These pose a challenge to the LSTM, similar to how [Google BERT](github.com/google-research/bert) used masked input in order to train their model. I wanted to see if the network would learn how to censor effectively or if it would try to fill in the censored parts.
 3. It was fun and no one has done this before.
 
 The model in this repo has been trained for 6 hours on an Nvidia 970M, a.k.a. not a lot at all. The loss was decreasing every epoch so there is still a lot of room for improvement, and you can continue to train the model. 
